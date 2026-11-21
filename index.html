@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ТЮРЕМНАЯ ЖИЗНЬ :: Барак #4</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg-concrete: #171614;
+    --bg-panel: #24221e;
+    --bg-panel-hi: #2f2c27;
+    --bg-inset: #131210;
+    --paper: #d6ccb8;
+    --ink-muted: #8a8173;
+    --rust: #9e2a2b;
+    --rust-hi: #b83738;
+    --brass: #b88b32;
+    --olive: #4a6345;
+    --border-dark: #0e0d0b;
+    --border-light: #47423a;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-concrete);
+    color: var(--paper);
+    font-family: Verdana, Tahoma, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Зернистость поверх экрана */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Скроллбар в духе старых браузеров */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-inset); border-left: 1px solid #2b2823; }
+  ::-webkit-scrollbar-thumb { background: #3d3831; border: 1px solid #595248; }
+  ::-webkit-scrollbar-thumb:hover { background: #524b41; }
+
+  /* Основная сетка */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Верхняя полоса досье */
+  .topbar {
+    background: var(--bg-panel);
+    border-bottom: 2px solid var(--border-dark);
+    box-shadow: inset 0 1px 0 var(--border-light);
+    padding: 6px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+    z-index: 20;
+  }
+
+  .brand-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stamp-title {
+    font-family: Impact, 'Arial Black', sans-serif;
+    letter-spacing: 1px;
+    font-size: 16px;
+    color: var(--paper);
+    border: 2px solid var(--rust);
+    padding: 1px 6px;
+    background: #1c1916;
+    text-transform: uppercase;
+  }
+
+  .dossier-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nick-line {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 13px;
+    color: var(--paper);
+  }
+
+  .rank-tag {
+    display: inline-block;
+    background: var(--bg-inset);
+    border: 1px solid var(--brass);
+    color: var(--brass);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 0 5px;
+    margin-left: 4px;
+    text-transform: uppercase;
+  }
+
+  /* Шкала ранга с насечками */
+  .rank-meter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .scratch-bar {
+    position: relative;
+    width: 110px;
+    height: 9px;
+    background: var(--bg-inset);
+    border: 1px solid #4d463d;
+    overflow: hidden;
+  }
+
+  .scratch-fill {
+    height: 100%;
+    width: 0%;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--brass) 0px,
+      var(--brass) 4px,
+      #73561c 4px,
+      #73561c 6px
+    );
+    transition: width 0.2s linear;
+  }
+
+  .scratch-text {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: var(--ink-muted);
+  }
+
+  .stats-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .stat-cell {
+    background: var(--bg-inset);
+    border: 1px solid #3f3a32;
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.7);
+    padding: 3px 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Courier New', monospace;
+  }
+
+  .stat-label {
+    color: var(--ink-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .stat-val {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--brass);
+  }
+
+  .stat-val.auth { color: var(--paper); }
+  .stat-val.online { color: #7ca874; }
+
+  /* Кнопки с тактильным нажатием */
+  .btn {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 12px;
+    color: var(--paper);
+    background: var(--bg-panel-hi);
+    border: 2px solid;
+    border-color: #544e45 #12110f #12110f #544e45;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: #38342e;
+  }
+
+  .btn:active:not(:disabled) {
+    border-color: #12110f #544e45 #544e45 #12110f;
+    transform: translate(1px, 1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+
+  .btn-brass {
+    background: #6b511d;
+    border-color: #a68238 #2e220b #2e220b #a68238;
+    color: #f2e8d5;
+  }
+  .btn-brass:hover:not(:disabled) { background: #7d5f22; }
+
+  .btn-rust {
+    background: var(--rust);
+    border-color: #c74a4b #421112 #421112 #c74a4b;
+    color: #f5ebe0;
+  }
+  .btn-rust:hover:not(:disabled) { background: var(--rust-hi); }
+
+  .btn-olive {
+    background: var(--olive);
+    border-color: #6a8a64 #223020 #223020 #6a8a64;
+    color: #eef5ec;
+  }
+  .btn-olive:hover:not(:disabled) { background: #567350; }
+
+  .btn-sm {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  /* Рабочая область: 3D слева + панель справа */
+  .workspace {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .viewport-wrap {
+    flex: 1;
+    position: relative;
+    background: #0d0c0a;
+    border-right: 2px solid var(--border-dark);
+    min-width: 0;
+    min-height: 220px;
+    cursor: crosshair;
+  }
+
+  #scene-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Инфо-накладки поверх 3D */
+  .cell-overlay-top {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    gap: 8px;
+  }
+
+  .note-tag {
+    background: rgba(20, 18, 16, 0.84);
+    border: 1px solid #4a443b;
+    padding: 4px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+
+  .note-tag strong { color: var(--paper); }
+
+  .cell-overlay-bottom {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+    gap: 8px;
+  }
+
+  .cell-overlay-bottom .btn {
+    pointer-events: auto;
+  }
+
+  .combo-readout {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--brass);
+    background: rgba(19, 18, 16, 0.88);
+    border: 1px solid var(--brass);
+    padding: 3px 7px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  /* Всплывающий текст клика */
+  @keyframes popUp {
+    0% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -56px); }
+  }
+
+  .float-gain {
+    position: fixed;
+    pointer-events: none;
+    z-index: 500;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 15px;
+    color: var(--brass);
+    text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+    animation: popUp 0.7s ease-out forwards;
+  }
+
+  /* Правая панель управления */
+  .side-panel {
+    width: 420px;
+    max-width: 100%;
+    background: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex-shrink: 0;
+  }
+
+  .tab-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--bg-inset);
+    border-bottom: 2px solid var(--border-dark);
+    flex-shrink: 0;
+  }
+
+  .tab-btn {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    background: #1b1916;
+    border: none;
+    border-right: 1px solid #2e2a25;
+    border-bottom: 2px solid transparent;
+    padding: 9px 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn:hover { color: var(--paper); background: #23201c; }
+  .tab-btn.active {
+    background: var(--bg-panel);
+    color: var(--paper);
+    border-bottom: 2px solid var(--brass);
+  }
+
+  .tab-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .tab-body.active { display: flex; }
+
+  /* Заголовки блоков */
+  .sec-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px dashed #4a443b;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+  }
+
+  .sec-title {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--paper);
+  }
+
+  .sec-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+
+  /* Карточки улучшений */
+  .upg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .upg-row {
+    background: var(--bg-panel-hi);
+    border: 1px solid #443e36;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    padding: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .upg-info { min-width: 0; flex: 1; }
+  .upg-name {
+    font-weight: bold;
+    font-size: 12px;
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .upg-lvl {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    background: var(--bg-inset);
+    border: 1px solid #474139;
+    color: var(--brass);
+    padding: 0 4px;
+  }
+  .upg-desc {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+  .upg-stat {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #82a87b;
+    margin-top: 2px;
+  }
+
+  .upg-buy {
+    min-width: 92px;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 7px;
+  }
+  .upg-cost {
+    font-size: 11px;
+    color: #f0d799;
+  }
+
+  /* Катран (Азартные игры) */
+  .sub-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .sub-btn {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 4px;
+    background: var(--bg-inset);
+    color: var(--ink-muted);
+    border: 1px solid #423c34;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .sub-btn.active {
+    background: var(--bg-panel-hi);
+    color: var(--brass);
+    border-color: var(--brass);
+  }
+
+  .bet-strip {
+    background: var(--bg-inset);
+    border: 1px solid #3f3a32;
+    padding: 7px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .bet-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  input[type="number"], input[type="text"] {
+    background: #100f0d;
+    border: 1px solid #524b41;
+    color: var(--paper);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 4px 7px;
+    outline: none;
+  }
+  input:focus { border-color: var(--brass); }
+
+  .game-box {
+    background: #1d1b18;
+    border: 1px solid #443e36;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .game-box.active { display: flex; }
+
+  .game-msg {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    text-align: center;
+    padding: 5px;
+    background: var(--bg-inset);
+    border: 1px solid #332f29;
+    color: var(--paper);
+    min-height: 28px;
+  }
+  .game-msg.win { color: #8ab882; border-color: var(--olive); }
+  .game-msg.lose { color: #d46a6a; border-color: var(--rust); }
+
+  /* 2D CSS Кости */
+  .dice-board {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 8px;
+    background: #151412;
+    border: 1px inset #38332c;
+  }
+
+  .die {
+    width: 58px;
+    height: 58px;
+    background: #d9cfb8;
+    border: 2px solid #52493b;
+    box-shadow: inset -2px -2px 0 #9c917b, inset 2px 2px 0 #f2ebd9, 3px 3px 0 rgba(0,0,0,0.6);
+    padding: 7px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 3px;
+  }
+
+  .die.rolling {
+    animation: shakeDie 0.14s infinite alternate;
+  }
+
+  @keyframes shakeDie {
+    0% { transform: translate(-2px, 1px) rotate(-6deg); }
+    100% { transform: translate(2px, -2px) rotate(6deg); }
+  }
+
+  .pip {
+    width: 9px;
+    height: 9px;
+    background: #1a1816;
+    border-radius: 50%;
+    align-self: center;
+    justify-self: center;
+    visibility: hidden;
+  }
+  .pip.on { visibility: visible; }
+
+  .dice-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .mode-opt {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 6px 4px;
+    background: var(--bg-inset);
+    color: var(--ink-muted);
+    border: 1px solid #423c34;
+    cursor: pointer;
+    text-align: center;
+  }
+  .mode-opt.selected {
+    background: #332c20;
+    color: var(--paper);
+    border-color: var(--brass);
+    font-weight: bold;
+  }
+
+  /* Напёрстки */
+  .cups-stage {
+    position: relative;
+    height: 126px;
+    background: #151412;
+    border: 1px inset #38332c;
+    overflow: hidden;
+  }
+
+  .cups-board-line {
+    position: absolute;
+    bottom: 14px;
+    left: 12px;
+    right: 12px;
+    height: 6px;
+    background: #332c24;
+    border-top: 1px solid #4f4539;
+  }
+
+  .cup-slot {
+    position: absolute;
+    bottom: 18px;
+    left: 0;
+    width: 33.333%;
+    display: flex;
+    justify-content: center;
+    transition: transform 0.28s ease-in-out;
+  }
+
+  .tin-cup {
+    position: relative;
+    width: 66px;
+    height: 76px;
+    background: repeating-linear-gradient(
+      90deg,
+      #595854 0px,
+      #73716c 10px,
+      #4a4945 22px,
+      #63625d 34px
+    );
+    border: 2px solid #2b2a27;
+    border-top: 3px solid #8c8982;
+    box-shadow: inset 0 -6px 0 rgba(0,0,0,0.45), 3px 4px 0 rgba(0,0,0,0.65);
+    cursor: pointer;
+    transition: transform 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 16px;
+    color: #171614;
+    z-index: 2;
+  }
+
+  .tin-cup.lifted {
+    transform: translateY(-30px);
+  }
+
+  .cup-ball {
+    position: absolute;
+    bottom: 2px;
+    width: 18px;
+    height: 18px;
+    background: #d4a644;
+    border: 2px solid #3b2c0d;
+    border-radius: 50%;
+    box-shadow: inset -3px -3px 0 #8a641b;
+    opacity: 0;
+    z-index: 1;
+  }
+  .cup-ball.shown { opacity: 1; }
+
+  /* Шухер (аналоговый прибор) */
+  .crash-meter {
+    position: relative;
+    height: 150px;
+    background: #10120f;
+    border: 2px solid #3a3730;
+    box-shadow: inset 0 0 18px rgba(0,0,0,0.9);
+    overflow: hidden;
+  }
+
+  #crash-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .crash-readout {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+  }
+
+  .crash-x {
+    font-size: 30px;
+    font-weight: bold;
+    color: #9ec497;
+    text-shadow: 0 0 6px rgba(122, 168, 114, 0.35);
+  }
+  .crash-x.busted { color: #d64949; text-shadow: none; }
+
+  .crash-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+
+  .crash-hist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+  .hist-tag {
+    padding: 1px 5px;
+    background: var(--bg-inset);
+    border: 1px solid #3f3a32;
+  }
+  .hist-tag.ok { color: #8ab882; border-color: var(--olive); }
+  .hist-tag.bad { color: #d46a6a; border-color: var(--rust); }
+
+  /* Положение (Рейтинг + Дело) */
+  .dossier-box {
+    background: #1c1a17;
+    border: 1px solid #474139;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dossier-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .uid-line {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: var(--ink-muted);
+    word-break: break-all;
+    user-select: text;
+  }
+
+  .rank-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  .rank-table th, .rank-table td {
+    border: 1px solid #36322b;
+    padding: 5px 6px;
+    text-align: left;
+  }
+  .rank-table th {
+    background: var(--bg-inset);
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  .rank-table tr.me {
+    background: #302a1d;
+  }
+
+  /* Прогон (Чат) */
+  .chat-box {
+    flex: 1;
+    min-height: 220px;
+    background: var(--bg-inset);
+    border: 1px solid #3f3a32;
+    padding: 7px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+  }
+
+  .chat-line {
+    border-bottom: 1px dotted #2b2822;
+    padding-bottom: 4px;
+    word-break: break-word;
+  }
+  .chat-time { color: #696257; font-size: 10px; margin-right: 4px; }
+  .chat-nick { color: var(--brass); font-weight: bold; }
+  .chat-rank { color: var(--ink-muted); font-size: 10px; }
+  .chat-sys {
+    color: #c9a65b;
+    background: #221e16;
+    border-left: 2px solid var(--brass);
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+
+  .chat-form {
+    display: flex;
+    gap: 6px;
+  }
+  .chat-form input { flex: 1; min-width: 0; }
+
+  /* Системные уведомления (тосты) */
+  .log-toast-wrap {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+    max-width: 300px;
+  }
+  .log-toast {
+    background: #1b1916;
+    border: 1px solid var(--brass);
+    color: var(--paper);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    box-shadow: 2px 2px 0 #000;
+  }
+  .log-toast.err { border-color: var(--rust); color: #e8b0b0; }
+
+  /* Вспышка при "Шухере" */
+  .shuher-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 400;
+    border: 6px solid var(--rust);
+    background: rgba(158, 42, 43, 0.16);
+    display: none;
+  }
+  .shuher-flash.on { display: block; }
+
+  /* Адаптив под планшеты и телефоны */
+  @media (max-width: 860px) {
+    .workspace { flex-direction: column; }
+    .viewport-wrap {
+      flex: none;
+      height: 36vh;
+      min-height: 200px;
+      border-right: none;
+      border-bottom: 2px solid var(--border-dark);
+    }
+    .side-panel {
+      width: 100%;
+      flex: 1;
+    }
+    .stamp-title { font-size: 13px; }
+    .scratch-bar { width: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shuher-flash" id="shuher-flash"></div>
+<div class="log-toast-wrap" id="toast-wrap"></div>
+
+<div class="app-shell">
+  <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
+  <header class="topbar">
+    <div class="brand-box">
+      <div class="stamp-title">БАРАК #4</div>
+      <div class="dossier-meta">
+        <div class="nick-line">
+          <span id="ui-nick">Арестант</span>
+          <span class="rank-tag" id="ui-rank">Первоход</span>
+        </div>
+        <div class="rank-meter">
+          <div class="scratch-bar"><div class="scratch-fill" id="ui-rank-fill"></div></div>
+          <span class="scratch-text" id="ui-rank-next">0 / 120</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-cell" title="Пачки чая — главная валюта">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#b88b32" stroke-width="1.5">
+          <rect x="2" y="3" width="12" height="10"/>
+          <line x1="2" y1="6" x2="14" y2="6"/>
+          <line x1="6" y1="9" x2="10" y2="9"/>
+        </svg>
+        <span class="stat-label">ЧАЙ:</span>
+        <span class="stat-val" id="ui-tea">0</span>
+      </div>
+
+      <div class="stat-cell" title="Авторитет в бараке">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#d6ccb8" stroke-width="1.5">
+          <polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.8 4,14 5,9.5 2,6.5 6,6"/>
+        </svg>
+        <span class="stat-label">АВТ:</span>
+        <span class="stat-val auth" id="ui-auth">0</span>
+      </div>
+
+      <div class="stat-cell" title="Игроков в сети">
+        <span class="stat-label">В СЕТИ:</span>
+        <span class="stat-val online" id="ui-online">1</span>
+      </div>
+
+      <button class="btn btn-sm" id="btn-sound">[ЗВУК: ВКЛ]</button>
+    </div>
+  </header>
+
+  <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+  <div class="workspace">
+    <!-- 3D КАМЕРА -->
+    <div class="viewport-wrap" id="viewport-wrap">
+      <canvas id="scene-canvas"></canvas>
+
+      <div class="cell-overlay-top">
+        <div class="note-tag">
+          КАМЕРА 14 // <strong id="ui-cpc">+1</strong> за клик | <strong id="ui-cps">0</strong>/сек
+        </div>
+        <div class="note-tag" id="net-badge">СЕТЬ: ПОДКЛЮЧЕНИЕ...</div>
+      </div>
+
+      <div class="cell-overlay-bottom">
+        <div class="combo-readout" id="ui-combo">ТЕМП x1.0</div>
+        <button class="btn btn-brass" id="btn-tap-tea">ЗАМУТИТЬ ЧАЙ (+1)</button>
+      </div>
+    </div>
+
+    <!-- БОКОВАЯ ПАНЕЛЬ -->
+    <aside class="side-panel">
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="t-shop">Движуха</button>
+        <button class="tab-btn" data-tab="t-katran">Катран</button>
+        <button class="tab-btn" data-tab="t-top">Положение</button>
+        <button class="tab-btn" data-tab="t-chat">Прогон</button>
+      </nav>
+
+      <!-- ВКЛАДКА 1: ЛАВКА / ДВИЖУХА -->
+      <section class="tab-body active" id="t-shop">
+        <div class="sec-head">
+          <span class="sec-title">Лавка и движуха</span>
+          <span class="sec-sub">Оплата пачками чая</span>
+        </div>
+        <div class="upg-list" id="upg-list"></div>
+      </section>
+
+      <!-- ВКЛАДКА 2: КАТРАН (МИНИ-ИГРЫ) -->
+      <section class="tab-body" id="t-katran">
+        <div class="sec-head">
+          <span class="sec-title">Катран за шконкой</span>
+          <span class="sec-sub">На интерес не играем</span>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-btn active" data-game="g-dice">Кости</button>
+          <button class="sub-btn" data-game="g-cups">Напёрстки</button>
+          <button class="sub-btn" data-game="g-crash">Шухер</button>
+        </div>
+
+        <!-- Общая ставка -->
+        <div class="bet-strip">
+          <div class="bet-input-group">
+            <label for="bet-val">СТАВКА:</label>
+            <input type="number" id="bet-val" value="25" min="5" style="width: 84px;">
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-sm bet-mod" data-op="half">1/2</button>
+            <button class="btn btn-sm bet-mod" data-op="x2">x2</button>
+            <button class="btn btn-sm bet-mod" data-op="max">ВСЁ</button>
+          </div>
+        </div>
+
+        <!-- КОСТИ -->
+        <div class="game-box active" id="g-dice">
+          <div class="dice-board">
+            <div class="die" id="die-1"></div>
+            <div class="die" id="die-2"></div>
+          </div>
+
+          <div class="dice-modes">
+            <button class="mode-opt selected" data-mode="under">Меньше 7 (x2)</button>
+            <button class="mode-opt" data-mode="over">Больше 7 (x2)</button>
+            <button class="mode-opt" data-mode="seven">Ровно 7 (x4)</button>
+            <button class="mode-opt" data-mode="double6">Дубль 6-6 (x5)</button>
+          </div>
+
+          <div class="game-msg" id="dice-msg">Выбери исход и кидай кости.</div>
+          <button class="btn btn-brass" id="btn-roll">КИНУТЬ КОСТИ</button>
+        </div>
+
+        <!-- НАПЁРСТКИ -->
+        <div class="game-box" id="g-cups">
+          <div class="cups-stage" id="cups-stage">
+            <div class="cups-board-line"></div>
+            <div class="cup-slot" id="slot-0" style="transform: translateX(0%);">
+              <div class="cup-ball" id="ball-0"></div>
+              <button class="tin-cup" data-cup="0">I</button>
+            </div>
+            <div class="cup-slot" id="slot-1" style="transform: translateX(100%);">
+              <div class="cup-ball" id="ball-1"></div>
+              <button class="tin-cup" data-cup="1">II</button>
+            </div>
+            <div class="cup-slot" id="slot-2" style="transform: translateX(200%);">
+              <div class="cup-ball" id="ball-2"></div>
+              <button class="tin-cup" data-cup="2">III</button>
+            </div>
+          </div>
+
+          <div class="game-msg" id="cups-msg">Жми "Крутить" и следи за шариком (x2.8).</div>
+          <button class="btn btn-brass" id="btn-cups-go">КРУТИТЬ СТАКАНЫ</button>
+        </div>
+
+        <!-- ШУХЕР (КРАШ) -->
+        <div class="game-box" id="g-crash">
+          <div class="crash-meter">
+            <canvas id="crash-canvas"></canvas>
+            <div class="crash-readout">
+              <div class="crash-x" id="crash-x">1.00x</div>
+              <div class="crash-sub" id="crash-sub">ОЖИДАНИЕ СТАВКИ</div>
+            </div>
+          </div>
+
+          <div class="crash-hist" id="crash-hist"></div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <button class="btn btn-brass" id="btn-crash-go">ЗАРЯДИТЬ</button>
+            <button class="btn btn-olive" id="btn-crash-take" disabled>ЗАБРАТЬ (0)</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 3: ПОЛОЖЕНИЕ (ПРОФИЛЬ + РЕЙТИНГ) -->
+      <section class="tab-body" id="t-top">
+        <div class="sec-head">
+          <span class="sec-title">Личное дело</span>
+          <span class="sec-sub" id="save-status">Локально</span>
+        </div>
+
+        <div class="dossier-box">
+          <div class="dossier-row">
+            <input type="text" id="inp-nick" maxlength="16" placeholder="Погоняло..." style="flex:1; min-width:120px;">
+            <button class="btn btn-sm" id="btn-nick">СМЕНИТЬ</button>
+            <button class="btn btn-sm btn-olive" id="btn-save">СОХРАНИТЬ</button>
+          </div>
+          <div class="uid-line">ДЕЛО №: <span id="ui-uid">---</span></div>
+        </div>
+
+        <div class="sec-head" style="margin-top:4px;">
+          <span class="sec-title">Положение в бараке</span>
+          <div style="display:flex; gap:4px;">
+            <button class="btn btn-sm btn-brass" id="sort-auth">По АВТ</button>
+            <button class="btn btn-sm" id="sort-tea">По ЧАЮ</button>
+          </div>
+        </div>
+
+        <table class="rank-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Погоняло</th>
+              <th>Авт</th>
+              <th>Чай</th>
+            </tr>
+          </thead>
+          <tbody id="top-tbody">
+            <tr><td colspan="4" style="text-align:center; color:#8a8173;">Загрузка списка...</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ВКЛАДКА 4: ПРОГОН (ЧАТ) -->
+      <section class="tab-body" id="t-chat">
+        <div class="sec-head">
+          <span class="sec-title">Прогон по хате</span>
+          <span class="sec-sub">Общий канал</span>
+        </div>
+
+        <div class="chat-box" id="chat-box">
+          <div class="chat-sys">Подключение к общему каналу...</div>
+        </div>
+
+        <form class="chat-form" id="chat-form">
+          <input type="text" id="chat-inp" maxlength="140" placeholder="Черкануть маляву..." autocomplete="off">
+          <button type="submit" class="btn btn-brass">СЛАТЬ</button>
+        </form>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+/* ======================== ДАННЫЕ И БАЛАНС ======================== */
+
+const RANKS = [
+  { name: 'Первоход', min: 0 },
+  { name: 'Бродяга', min: 120 },
+  { name: 'Бывалый', min: 700 },
+  { name: 'Смотрящий', min: 3500 },
+  { name: 'Король барака', min: 18000 }
+];
+
+const UPGRADES = [
+  { id: 'spoon',   name: 'Заточка из ложки',       desc: 'Столовская нержавейка. Аргумент весомый.',      type: 'click',   base: 15,   mult: 1.55, val: 1 },
+  { id: 'boiler',  name: 'Кипятильник из лезвий',  desc: 'Две бритвы, спички и провод. Варит без сбоев.', type: 'passive', base: 45,   mult: 1.50, val: 2 },
+  { id: 'kitchen', name: 'Свой человек на кухне',  desc: 'Подкидывает заварку мимо раздачи.',             type: 'click',   base: 170,  mult: 1.60, val: 6 },
+  { id: 'chifir',  name: 'Точка с чифиром',        desc: 'Круглосуточный разлив за дальней шконкой.',     type: 'passive', base: 520,  mult: 1.55, val: 15 },
+  { id: 'guard',   name: 'Подкуп вертухая',        desc: 'Глазок закрыт, посылки идут без досмотра.',     type: 'passive', base: 2100, mult: 1.60, val: 60 },
+  { id: 'meeting', name: 'Сходняк в бараке',       desc: 'Все вопросы решаются через тебя.',              type: 'both',    base: 9000, mult: 1.68, clickVal: 40, passVal: 240, authSec: 12 }
+];
+
+const state = {
+  tea: 20,
+  auth: 0,
+  clicks: 0,
+  nick: 'Арестант_' + Math.floor(100 + Math.random() * 899),
+  upgs: { spoon: 0, boiler: 0, kitchen: 0, chifir: 0, guard: 0, meeting: 0 },
+  soundOn: true,
+  combo: 1.0,
+  lastClick: 0,
+  sortBy: 'auth',
+  players: [],
+  uid: null,
+  online: false
+};
+
+/* ======================== АНАЛОГОВЫЙ ЗВУК ======================== */
+
+const audio = {
+  ctx: null,
+  wake() {
+    if (!this.ctx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (C) this.ctx = new C();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+  },
+  thud() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(125 + Math.random() * 25, t);
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.065);
+    g.gain.setValueAtTime(0.24, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.075);
+    osc.connect(g); g.connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + 0.08);
+  },
+  clink() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.setValueAtTime(680, t + 0.045);
+    g.gain.setValueAtTime(0.08, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    osc.connect(g); g.connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + 0.15);
+  },
+  rattle() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 5; i++) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(240 + Math.random() * 260, t + i * 0.055);
+      g.gain.setValueAtTime(0.09, t + i * 0.055);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.055 + 0.035);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t + i * 0.055); osc.stop(t + i * 0.055 + 0.04);
+    }
+  },
+  scrape() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.11);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const flt = this.ctx.createBiquadFilter();
+    flt.type = 'bandpass';
+    flt.frequency.value = 950;
+    const g = this.ctx.createGain();
+    g.gain.value = 0.12;
+    src.connect(flt); flt.connect(g); g.connect(this.ctx.destination);
+    src.start(t);
+  },
+  tick() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t);
+    g.gain.setValueAtTime(0.04, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    osc.connect(g); g.connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + 0.03);
+  },
+  buzzer() {
+    if (!state.soundOn) return;
+    this.wake(); if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(145, t);
+    osc.frequency.linearRampToValueAtTime(110, t + 0.45);
+    g.gain.setValueAtTime(0.16, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.48);
+    osc.connect(g); g.connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + 0.5);
+  }
+};
+
+/* ======================== УТИЛИТЫ ======================== */
+
+function fmt(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(1) + 'K';
+  return Math.floor(n).toString();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toast(msg, isErr = false) {
+  const wrap = document.getElementById('toast-wrap');
+  const d = document.createElement('div');
+  d.className = 'log-toast' + (isErr ? ' err' : '');
+  d.textContent = msg;
+  wrap.appendChild(d);
+  setTimeout(() => d.remove(), 2800);
+}
+
+function getClickPower() {
+  let p = 1;
+  for (const u of UPGRADES) {
+    const lvl = state.upgs[u.id] || 0;
+    if (u.type === 'click') p += lvl * u.val;
+    if (u.type === 'both') p += lvl * u.clickVal;
+  }
+  return p;
+}
+
+function getPassive() {
+  let teaSec = 0, authSec = 0;
+  for (const u of UPGRADES) {
+    const lvl = state.upgs[u.id] || 0;
+    if (u.type === 'passive') teaSec += lvl * u.val;
+    if (u.type === 'both') {
+      teaSec += lvl * u.passVal;
+      authSec += lvl * u.authSec;
+    }
+  }
+  return { teaSec, authSec };
+}
+
+function getCost(u) {
+  return Math.floor(u.base * Math.pow(u.mult, state.upgs[u.id] || 0));
+}
+
+function getRank(auth) {
+  let idx = 0;
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (auth >= RANKS[i].min) { idx = i; break; }
+  }
+  const cur = RANKS[idx];
+  const nxt = RANKS[idx + 1] || null;
+  const pct = nxt ? Math.min(100, Math.max(0, ((auth - cur.min) / (nxt.min - cur.min)) * 100)) : 100;
+  return { cur, nxt, pct };
+}
+
+/* ======================== 3D СЦЕНА (LOW-POLY PS1) ======================== */
+
+let scene, camera, renderer, raycaster, pointer;
+let stashGroup, lampPivot, lampLight, dustPoints;
+let shards = [];
+let bounceAmt = 0, shakeAmt = 0;
+let dragOn = false, dragX = 0, camYaw = 0;
+
+function makeWallTexture(withTallies) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#36332d';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Шум штукатурки
+  const img = ctx.getImageData(0, 0, 256, 256);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (Math.random() - 0.5) * 38;
+    d[i] = Math.max(0, Math.min(255, d[i] + v));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + v));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + v));
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Потёки сырости
+  ctx.fillStyle = 'rgba(15, 13, 10, 0.25)';
+  ctx.fillRect(0, 0, 256, 36);
+  ctx.fillRect(0, 210, 256, 46);
+
+  // Нацарапанные палочки дней ||||
+  if (withTallies) {
+    ctx.strokeStyle = 'rgba(214, 204, 184, 0.45)';
+    ctx.lineWidth = 2;
+    const groups = [[36, 95], [88, 95], [140, 95], [44, 145], [96, 145]];
+    groups.forEach(([gx, gy]) => {
+      for (let k = 0; k < 4; k++) {
+        ctx.beginPath();
+        ctx.moveTo(gx + k * 7, gy);
+        ctx.lineTo(gx + k * 7 - 1, gy + 22);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(gx - 3, gy + 18);
+      ctx.lineTo(gx + 25, gy + 4);
+      ctx.stroke();
+    });
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.NearestFilter; // Чёткий PS1-пиксель
+  return tex;
+}
+
+function makeWoodTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#473728';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y += 3) {
+    ctx.fillStyle = (y % 6 === 0) ? 'rgba(20,12,6,0.28)' : 'rgba(110,85,58,0.14)';
+    ctx.fillRect(0, y, 128, 2);
+  }
+  ctx.strokeStyle = '#241a11';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, 42); ctx.lineTo(128, 42); ctx.moveTo(0, 86); ctx.lineTo(128, 86); ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.NearestFilter;
+  return tex;
+}
+
+function init3D() {
+  const wrap = document.getElementById('viewport-wrap');
+  const canvas = document.getElementById('scene-canvas');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0c0b09);
+  scene.fog = new THREE.Fog(0x0c0b09, 3.5, 11.5);
+
+  camera = new THREE.PerspectiveCamera(54, wrap.clientWidth / wrap.clientHeight, 0.1, 30);
+  camera.position.set(0, 2.15, 4.35);
+  camera.lookAt(0, 1.05, 0);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
+
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  // Базовый слабый свет + холодный из окна
+  scene.add(new THREE.AmbientLight(0x2e2d2a, 0.65));
+  const winLight = new THREE.PointLight(0x4b6a8a, 1.1, 9);
+  winLight.position.set(1.6, 3.0, -3.0);
+  scene.add(winLight);
+
+  // Качающаяся лампочка на проводе
+  lampPivot = new THREE.Group();
+  lampPivot.position.set(0, 4.4, 0.2);
+
+  const cord = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, 1.45, 5),
+    new THREE.MeshBasicMaterial({ color: 0x111111 })
+  );
+  cord.position.y = -0.72;
+  lampPivot.add(cord);
+
+  const shade = new THREE.Mesh(
+    new THREE.ConeGeometry(0.24, 0.16, 7, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x2f2d28, roughness: 0.8, side: THREE.DoubleSide })
+  );
+  shade.position.y = -1.42;
+  lampPivot.add(shade);
+
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.075, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xffd584 })
+  );
+  bulb.position.y = -1.5;
+  lampPivot.add(bulb);
+
+  lampLight = new THREE.PointLight(0xffb85c, 2.2, 11, 1.6);
+  lampLight.position.set(0, -1.58, 0);
+  lampLight.castShadow = true;
+  lampLight.shadow.mapSize.width = 512;
+  lampLight.shadow.mapSize.height = 512;
+  lampPivot.add(lampLight);
+  scene.add(lampPivot);
+
+  // Стены, пол, потолок
+  const wallMat = new THREE.MeshStandardMaterial({ map: makeWallTexture(false), roughness: 0.95 });
+  const backMat = new THREE.MeshStandardMaterial({ map: makeWallTexture(true), roughness: 0.95 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e1d1a, roughness: 0.95 });
+  const rustMat = new THREE.MeshStandardMaterial({ color: 0x3b2c25, roughness: 0.75, metalness: 0.55 });
+
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), backMat);
+  backWall.position.set(0, 2.5, -3.4);
+  backWall.receiveShadow = true;
+  scene.add(backWall);
+
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), wallMat);
+  leftWall.rotation.y = Math.PI / 2;
+  leftWall.position.set(-3.4, 2.5, 0);
+  leftWall.receiveShadow = true;
+  scene.add(leftWall);
+
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), wallMat);
+  rightWall.rotation.y = -Math.PI / 2;
+  rightWall.position.set(3.4, 2.5, 0);
+  rightWall.receiveShadow = true;
+  scene.add(rightWall);
+
+  // Окошко с ржавой решёткой на задней стене
+  const winBack = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 0.9),
+    new THREE.MeshBasicMaterial({ color: 0x273b52 })
+  );
+  winBack.position.set(1.5, 2.9, -3.37);
+  scene.add(winBack);
+
+  for (let i = -2; i <= 2; i++) {
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.95, 6), rustMat);
+    bar.position.set(1.5 + i * 0.28, 2.9, -3.32);
+    scene.add(bar);
+  }
+
+  // Решётка справа в камере
+  for (let i = 0; i < 6; i++) {
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 4.6, 6), rustMat);
+    bar.position.set(2.5, 2.3, -2.5 + i * 0.85);
+    bar.castShadow = true;
+    scene.add(bar);
+  }
+
+  // Потёртый деревянный стол
+  const woodMat = new THREE.MeshStandardMaterial({ map: makeWoodTexture(), roughness: 0.9 });
+  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.12, 1.4), woodMat);
+  tableTop.position.set(0, 0.92, 0);
+  tableTop.castShadow = true;
+  tableTop.receiveShadow = true;
+  scene.add(tableTop);
+
+  [[-1.0, -0.55], [1.0, -0.55], [-1.0, 0.55], [1.0, 0.55]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.92, 0.1), woodMat);
+    leg.position.set(x, 0.46, z);
+    leg.castShadow = true;
+    scene.add(leg);
+  });
+
+  // КЛИКАБЕЛЬНЫЙ ХАБАР НА СТОЛЕ: стопка пачек чая + жестяная кружка + пара костей
+  stashGroup = new THREE.Group();
+  stashGroup.position.set(0, 0.98, 0);
+
+  const teaPackMat = new THREE.MeshStandardMaterial({ color: 0x8c5a2b, roughness: 0.85 });
+  const teaBandMat = new THREE.MeshStandardMaterial({ color: 0xb88b32, roughness: 0.6 });
+
+  // Стопка пачек чая
+  for (let i = 0; i < 4; i++) {
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.3), teaPackMat);
+    pack.position.set(-0.22 + (Math.random() - 0.5) * 0.04, 0.07 + i * 0.145, -0.05);
+    pack.rotation.y = (Math.random() - 0.5) * 0.25;
+    pack.castShadow = true;
+    stashGroup.add(pack);
+
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.04, 0.31), teaBandMat);
+    band.position.copy(pack.position);
+    band.rotation.copy(pack.rotation);
+    stashGroup.add(band);
+  }
+
+  // Жестяная кружка с чифиром
+  const tinMat = new THREE.MeshStandardMaterial({ color: 0x70726e, roughness: 0.5, metalness: 0.7 });
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.32, 9), tinMat);
+  mug.position.set(0.42, 0.16, 0.08);
+  mug.castShadow = true;
+  stashGroup.add(mug);
+
+  const chifir = new THREE.Mesh(
+    new THREE.CircleGeometry(0.15, 9),
+    new THREE.MeshBasicMaterial({ color: 0x26140a })
+  );
+  chifir.rotation.x = -Math.PI / 2;
+  chifir.position.set(0.42, 0.322, 0.08);
+  stashGroup.add(chifir);
+
+  // Пара игральных костей
+  const dieMat = new THREE.MeshStandardMaterial({ color: 0xd6ccb8, roughness: 0.6 });
+  const d1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), dieMat);
+  d1.position.set(0.08, 0.075, 0.36);
+  d1.rotation.y = 0.5;
+  d1.castShadow = true;
+  stashGroup.add(d1);
+
+  const d2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), dieMat);
+  d2.position.set(0.28, 0.075, 0.42);
+  d2.rotation.y = -0.35;
+  d2.castShadow = true;
+  stashGroup.add(d2);
+
+  scene.add(stashGroup);
+
+  // Пылинки в воздухе
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPos = new Float32Array(70 * 3);
+  for (let i = 0; i < 70; i++) {
+    dustPos[i * 3] = (Math.random() - 0.5) * 4.5;
+    dustPos[i * 3 + 1] = 0.6 + Math.random() * 3.0;
+    dustPos[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+  dustPoints = new THREE.Points(
+    dustGeo,
+    new THREE.PointsMaterial({ color: 0xc2b59b, size: 0.035, transparent: true, opacity: 0.45 })
+  );
+  scene.add(dustPoints);
+
+  // События 3D-окна
+  const resize3D = () => {
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+  };
+  window.addEventListener('resize', resize3D);
+  if (window.ResizeObserver) new ResizeObserver(resize3D).observe(wrap);
+
+  wrap.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button')) return;
+    dragOn = true;
+    dragX = e.clientX;
+  });
+  window.addEventListener('mouseup', () => { dragOn = false; });
+  wrap.addEventListener('mousemove', (e) => {
+    if (!dragOn) return;
+    camYaw = Math.max(-0.75, Math.min(0.75, camYaw + (e.clientX - dragX) * 0.004));
+    dragX = e.clientX;
+  });
+
+  wrap.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const rect = canvas.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObjects(stashGroup.children, true).length > 0;
+    doMainClick(e.clientX, e.clientY, hit);
+  });
+}
+
+function spawnShards() {
+  const geo = new THREE.BoxGeometry(0.055, 0.055, 0.055);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xb88b32 });
+  for (let i = 0; i < 7; i++) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set((Math.random() - 0.5) * 0.4, 1.25, (Math.random() - 0.5) * 0.3);
+    const a = Math.random() * Math.PI * 2;
+    const sp = 0.03 + Math.random() * 0.05;
+    m.userData = { vx: Math.cos(a) * sp, vy: 0.07 + Math.random() * 0.06, vz: Math.sin(a) * sp, life: 1 };
+    scene.add(m);
+    shards.push(m);
+  }
+}
+
+function loop3D(now) {
+  requestAnimationFrame(loop3D);
+  const t = now * 0.001;
+
+  // Маятник лампочки
+  if (lampPivot) {
+    lampPivot.rotation.z = Math.sin(t * 1.15) * 0.14;
+    lampPivot.rotation.x = Math.cos(t * 0.8) * 0.05;
+    // Лёгкое мерцание старой проводки
+    lampLight.intensity = 2.1 + Math.sin(t * 19) * 0.06 + (Math.random() > 0.985 ? -0.45 : 0);
+  }
+
+  // Тряска камеры и поворот
+  const sx = shakeAmt > 0.001 ? (Math.random() - 0.5) * shakeAmt : 0;
+  const sy = shakeAmt > 0.001 ? (Math.random() - 0.5) * shakeAmt : 0;
+  shakeAmt *= 0.8;
+
+  const targetX = Math.sin(camYaw) * 2.1;
+  const targetZ = 4.35 - Math.abs(camYaw) * 0.4;
+  camera.position.x += (targetX - camera.position.x) * 0.08 + sx;
+  camera.position.y += (2.15 - camera.position.y) * 0.08 + sy;
+  camera.position.z += (targetZ - camera.position.z) * 0.08;
+  camera.lookAt(0, 1.05, 0);
+
+  // Прыжок хабара на столе
+  if (stashGroup) {
+    stashGroup.rotation.y += 0.003 + bounceAmt * 0.16;
+    stashGroup.position.y = 0.98 + bounceAmt * 0.24;
+    const sc = 1 + bounceAmt * 0.14;
+    stashGroup.scale.set(sc, 1 + bounceAmt * 0.22, sc);
+    bounceAmt *= 0.82;
+  }
+
+  // Пыль
+  if (dustPoints) {
+    dustPoints.rotation.y = t * 0.04;
+    dustPoints.position.y = Math.sin(t * 0.5) * 0.06;
+  }
+
+  // Частицы
+  for (let i = shards.length - 1; i >= 0; i--) {
+    const s = shards[i];
+    s.position.x += s.userData.vx;
+    s.position.y += s.userData.vy;
+    s.position.z += s.userData.vz;
+    s.userData.vy -= 0.005;
+    s.rotation.x += 0.2;
+    s.userData.life -= 0.038;
+    s.scale.setScalar(Math.max(0.01, s.userData.life));
+    if (s.userData.life <= 0) {
+      scene.remove(s);
+      shards.splice(i, 1);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ======================== КЛИКЕР И UI ======================== */
+
+function doMainClick(x, y, directHit) {
+  const now = Date.now();
+  state.combo = (now - state.lastClick < 420) ? Math.min(2.2, state.combo + 0.06) : 1.0;
+  state.lastClick = now;
+
+  const base = getClickPower();
+  const gain = Math.max(1, Math.round(base * state.combo * (directHit ? 1.2 : 1)));
+  const authGain = Math.max(1, Math.round(gain * 0.3));
+
+  const oldRank = getRank(state.auth).cur.name;
+  state.tea += gain;
+  state.auth += authGain;
+  state.clicks++;
+  const newRank = getRank(state.auth).cur.name;
+
+  audio.thud();
+  bounceAmt = 1.0;
+  shakeAmt = directHit ? 0.09 : 0.045;
+  spawnShards();
+
+  // Всплывающее число
+  const fl = document.createElement('div');
+  fl.className = 'float-gain';
+  fl.style.left = x + 'px';
+  fl.style.top = y + 'px';
+  fl.textContent = `+${fmt(gain)}` + (directHit ? ' [ТОЧНО]' : '');
+  document.body.appendChild(fl);
+  setTimeout(() => fl.remove(), 720);
+
+  if (newRank !== oldRank) {
+    audio.clink();
+    toast(`Новое положение: ${newRank}`);
+    saveToCloud();
+  }
+
+  const cEl = document.getElementById('ui-combo');
+  if (state.combo > 1.15) {
+    cEl.textContent = `ТЕМП x${state.combo.toFixed(1)}`;
+    cEl.style.opacity = '1';
+  } else {
+    cEl.style.opacity = '0';
+  }
+
+  refreshUI();
+}
+
+function refreshUI() {
+  const cpc = getClickPower();
+  const { teaSec } = getPassive();
+  const rk = getRank(state.auth);
+
+  document.getElementById('ui-nick').textContent = state.nick;
+  document.getElementById('ui-rank').textContent = rk.cur.name;
+  document.getElementById('ui-rank-fill').style.width = rk.pct + '%';
+  document.getElementById('ui-rank-next').textContent = rk.nxt ? `${fmt(state.auth)} / ${fmt(rk.nxt.min)}` : 'ВЕРШИНА';
+
+  document.getElementById('ui-tea').textContent = fmt(state.tea);
+  document.getElementById('ui-auth').textContent = fmt(state.auth);
+  document.getElementById('ui-cpc').textContent = '+' + fmt(cpc);
+  document.getElementById('ui-cps').textContent = fmt(teaSec);
+  document.getElementById('btn-tap-tea').textContent = `ЗАМУТИТЬ ЧАЙ (+${fmt(cpc)})`;
+
+  for (const u of UPGRADES) {
+    const btn = document.getElementById('buy-' + u.id);
+    if (!btn) continue;
+    const cost = getCost(u);
+    btn.disabled = state.tea < cost;
+    document.getElementById('cost-' + u.id).textContent = fmt(cost) + ' ч.';
+    document.getElementById('lvl-' + u.id).textContent = 'ур.' + (state.upgs[u.id] || 0);
+  }
+}
+
+function buildUpgrades() {
+  const box = document.getElementById('upg-list');
+  box.innerHTML = '';
+  for (const u of UPGRADES) {
+    let eff = '';
+    if (u.type === 'click') eff = `+${u.val} к клику`;
+    if (u.type === 'passive') eff = `+${u.val} чая/сек`;
+    if (u.type === 'both') eff = `+${u.clickVal} клик, +${u.passVal} ч/с, +${u.authSec} авт/с`;
+
+    const row = document.createElement('div');
+    row.className = 'upg-row';
+    row.innerHTML = `
+      <div class="upg-info">
+        <div class="upg-name">${u.name} <span class="upg-lvl" id="lvl-${u.id}">ур.0</span></div>
+        <div class="upg-desc">${u.desc}</div>
+        <div class="upg-stat">${eff}</div>
+      </div>
+      <button class="btn btn-brass upg-buy" id="buy-${u.id}">
+        <span>ВЗЯТЬ</span>
+        <span class="upg-cost" id="cost-${u.id}">0</span>
+      </button>
+    `;
+    box.appendChild(row);
+
+    document.getElementById('buy-' + u.id).addEventListener('click', () => {
+      const cost = getCost(u);
+      if (state.tea < cost) return;
+      state.tea -= cost;
+      state.upgs[u.id] = (state.upgs[u.id] || 0) + 1;
+      state.auth += Math.max(4, Math.floor(cost * 0.18));
+      audio.clink();
+      refreshUI();
+      saveToCloud();
+    });
+  }
+}
+
+// Тик пассивного дохода (1 раз в сек)
+setInterval(() => {
+  const { teaSec, authSec } = getPassive();
+  if (teaSec > 0 || authSec > 0) {
+    state.tea += teaSec;
+    state.auth += authSec + Math.floor(teaSec * 0.12);
+    refreshUI();
+  }
+  if (Date.now() - state.lastClick > 1100 && state.combo > 1) {
+    state.combo = 1.0;
+    document.getElementById('ui-combo').style.opacity = '0';
+  }
+}, 1000);
+
+/* ======================== КАТРАН (МИНИ-ИГРЫ) ======================== */
+
+function readBet() {
+  const v = Math.floor(Number(document.getElementById('bet-val').value));
+  if (!v || v < 5) { toast('Меньше 5 пачек не ставят.', true); audio.buzzer(); return 0; }
+  if (v > state.tea) { toast('Не хватает чая на эту ставку.', true); audio.buzzer(); return 0; }
+  return v;
+}
+
+document.querySelectorAll('.bet-mod').forEach(b => {
+  b.addEventListener('click', () => {
+    const inp = document.getElementById('bet-val');
+    let cur = Math.max(5, Math.floor(Number(inp.value) || 5));
+    if (b.dataset.op === 'half') cur = Math.max(5, Math.floor(cur / 2));
+    if (b.dataset.op === 'x2') cur = cur * 2;
+    if (b.dataset.op === 'max') cur = Math.floor(state.tea);
+    inp.value = Math.max(5, Math.min(Math.floor(state.tea) || 5, cur));
+  });
+});
+
+/* --- 1. КОСТИ (2D CSS PIPS) --- */
+const PIP_MAP = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8]
+};
+
+function renderDie(elId, val) {
+  const el = document.getElementById(elId);
+  const on = PIP_MAP[val] || [];
+  let html = '';
+  for (let i = 0; i < 9; i++) {
+    html += `<span class="pip${on.includes(i) ? ' on' : ''}"></span>`;
+  }
+  el.innerHTML = html;
+}
+renderDie('die-1', 6);
+renderDie('die-2', 1);
+
+let diceMode = 'under';
+let diceBusy = false;
+
+document.querySelectorAll('.mode-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-opt').forEach(x => x.classList.remove('selected'));
+    btn.classList.add('selected');
+    diceMode = btn.dataset.mode;
+  });
+});
+
+document.getElementById('btn-roll').addEventListener('click', () => {
+  if (diceBusy) return;
+  const bet = readBet();
+  if (!bet) return;
+
+  diceBusy = true;
+  state.tea -= bet;
+  refreshUI();
+  audio.rattle();
+
+  const d1 = document.getElementById('die-1');
+  const d2 = document.getElementById('die-2');
+  const msg = document.getElementById('dice-msg');
+  d1.classList.add('rolling');
+  d2.classList.add('rolling');
+  msg.className = 'game-msg';
+  msg.textContent = 'Кости пошли по столу...';
+
+  const iv = setInterval(() => {
+    renderDie('die-1', 1 + Math.floor(Math.random() * 6));
+    renderDie('die-2', 1 + Math.floor(Math.random() * 6));
+  }, 75);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    d1.classList.remove('rolling');
+    d2.classList.remove('rolling');
+
+    const v1 = 1 + Math.floor(Math.random() * 6);
+    const v2 = 1 + Math.floor(Math.random() * 6);
+    const sum = v1 + v2;
+    renderDie('die-1', v1);
+    renderDie('die-2', v2);
+
+    let mult = 0;
+    if (diceMode === 'under' && sum < 7) mult = 2;
+    if (diceMode === 'over' && sum > 7) mult = 2;
+    if (diceMode === 'seven' && sum === 7) mult = 4;
+    if (diceMode === 'double6' && v1 === 6 && v2 === 6) mult = 5;
+
+    if (mult > 0) {
+      const win = bet * mult;
+      state.tea += win;
+      state.auth += Math.round(bet * 0.25);
+      audio.clink();
+      msg.className = 'game-msg win';
+      msg.textContent = `Выпало ${v1}+${v2}=${sum}. Забрал ${fmt(win)} чая (x${mult}).`;
+      if (win >= 250) postSystemChat(`[КАТРАН] ${state.nick} поднял ${fmt(win)} чая в кости.`);
+    } else {
+      audio.buzzer();
+      msg.className = 'game-msg lose';
+      msg.textContent = `Выпало ${v1}+${v2}=${sum}. Мимо кассы.`;
+    }
+
+    refreshUI();
+    saveToCloud();
+    diceBusy = false;
+  }, 560);
+});
+
+/* --- 2. НАПЁРСТКИ (РЕАЛЬНОЕ ПЕРЕМЕШИВАНИЕ) --- */
+let cupsState = 'idle'; // idle | shuffling | pick
+let cupsBet = 0;
+let ballCup = 0;
+let cupOrder = [0, 1, 2]; // индекс слота для каждой кружки
+
+function applyCupPositions() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('slot-' + i).style.transform = `translateX(${cupOrder[i] * 100}%)`;
+  }
+}
+
+document.getElementById('btn-cups-go').addEventListener('click', () => {
+  if (cupsState !== 'idle') return;
+  const bet = readBet();
+  if (!bet) return;
+
+  cupsBet = bet;
+  state.tea -= bet;
+  refreshUI();
+
+  cupsState = 'shuffling';
+  ballCup = Math.floor(Math.random() * 3);
+  const msg = document.getElementById('cups-msg');
+  msg.className = 'game-msg';
+  msg.textContent = 'Смотри внимательно...';
+  document.getElementById('btn-cups-go').disabled = true;
+
+  // Сначала на мгновение показываем, где шарик
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('ball-' + i).classList.toggle('shown', i === ballCup);
+    document.querySelector(`.tin-cup[data-cup="${i}"]`).classList.toggle('lifted', i === ballCup);
+  }
+
+  setTimeout(() => {
+    // Накрываем
+    for (let i = 0; i < 3; i++) {
+      document.querySelector(`.tin-cup[data-cup="${i}"]`).classList.remove('lifted');
+      document.getElementById('ball-' + i).classList.remove('shown');
+    }
+
+    // 6 быстрых перестановок
+    let step = 0;
+    const shuffleIv = setInterval(() => {
+      const a = Math.floor(Math.random() * 3);
+      let b = Math.floor(Math.random() * 3);
+      while (b === a) b = Math.floor(Math.random() * 3);
+      const tmp = cupOrder[a];
+      cupOrder[a] = cupOrder[b];
+      cupOrder[b] = tmp;
+      applyCupPositions();
+      audio.scrape();
+      step++;
+      if (step >= 6) {
+        clearInterval(shuffleIv);
+        cupsState = 'pick';
+        msg.textContent = 'Кручу-верчу... Ткни в стакан.';
+      }
+    }, 300);
+  }, 550);
+});
+
+document.querySelectorAll('.tin-cup').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (cupsState !== 'pick') return;
+    cupsState = 'idle';
+    const picked = Number(btn.dataset.cup);
+
+    document.getElementById('ball-' + ballCup).classList.add('shown');
+    document.querySelectorAll('.tin-cup').forEach(c => c.classList.add('lifted'));
+
+    const msg = document.getElementById('cups-msg');
+    if (picked === ballCup) {
+      const win = Math.floor(cupsBet * 2.8);
+      state.tea += win;
+      state.auth += Math.round(cupsBet * 0.3);
+      audio.clink();
+      msg.className = 'game-msg win';
+      msg.textContent = `Угадал! Навар ${fmt(win)} чая (x2.8).`;
+      if (win >= 250) postSystemChat(`[КАТРАН] ${state.nick} угадал напёрсток и взял ${fmt(win)} чая.`);
+    } else {
+      audio.buzzer();
+      msg.className = 'game-msg lose';
+      msg.textContent = 'Пусто. Ловкость рук, никакого мошенства.';
+    }
+
+    document.getElementById('btn-cups-go').disabled = false;
+    refreshUI();
+    saveToCloud();
+  });
+});
+
+/* --- 3. ШУХЕР (КРАШ + ОСЦИЛЛОГРАФ) --- */
+let crashOn = false, crashBet = 0, crashMult = 1.0, crashStop = 2.0, crashT0 = 0, crashRaf = 0;
+let lastTickMult = 1.0;
+const crashHistory = [];
+
+function drawOscilloscope(mult, busted) {
+  const c = document.getElementById('crash-canvas');
+  const rect = c.parentElement.getBoundingClientRect();
+  if (c.width !== Math.floor(rect.width) || c.height !== Math.floor(rect.height)) {
+    c.width = Math.max(200, Math.floor(rect.width));
+    c.height = Math.max(120, Math.floor(rect.height));
+  }
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+
+  ctx.fillStyle = '#10120f';
+  ctx.fillRect(0, 0, w, h);
+
+  // Сетка осциллографа
+  ctx.strokeStyle = 'rgba(110, 130, 100, 0.14)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 28) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 24) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+  // Кривая
+  const p = Math.min(1, (mult - 1) / 4.5);
+  const endX = Math.max(12, w * p);
+  const endY = h - 14 - (h - 32) * Math.min(1, (mult - 1) / 5.5);
+
+  ctx.beginPath();
+  ctx.moveTo(0, h - 14);
+  ctx.quadraticCurveTo(endX * 0.6, h - 16, endX, endY);
+  ctx.strokeStyle = busted ? '#b83738' : '#7ca874';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Точка-индикатор
+  ctx.fillStyle = busted ? '#e05858' : '#d6ccb8';
+  ctx.fillRect(endX - 3, endY - 3, 6, 6);
+}
+
+function pushCrashHist(val, ok) {
+  crashHistory.unshift({ val, ok });
+  if (crashHistory.length > 7) crashHistory.pop();
+  document.getElementById('crash-hist').innerHTML = crashHistory
+    .map(h => `<span class="hist-tag ${h.ok ? 'ok' : 'bad'}">${h.val.toFixed(2)}x</span>`)
+    .join('');
+}
+
+document.getElementById('btn-crash-go').addEventListener('click', () => {
+  if (crashOn) return;
+  const bet = readBet();
+  if (!bet) return;
+
+  crashBet = bet;
+  state.tea -= bet;
+  refreshUI();
+
+  crashStop = Math.max(1.06, Math.min(20, 0.95 / (1 - Math.random())));
+  crashMult = 1.0;
+  lastTickMult = 1.0;
+  crashOn = true;
+  crashT0 = performance.now();
+
+  document.getElementById('btn-crash-go').disabled = true;
+  document.getElementById('btn-crash-take').disabled = false;
+  document.getElementById('crash-x').className = 'crash-x';
+  document.getElementById('crash-sub').textContent = 'КОРИДОР ЧИСТ — ЖМИ ЗАБРАТЬ';
+
+  const step = (now) => {
+    if (!crashOn) return;
+    const dt = (now - crashT0) / 1000;
+    crashMult = Math.pow(Math.E, dt * 0.25);
+
+    if (crashMult - lastTickMult >= 0.15) {
+      audio.tick();
+      lastTickMult = crashMult;
+    }
+
+    if (crashMult >= crashStop) {
+      crashOn = false;
+      crashMult = crashStop;
+      audio.buzzer();
+      drawOscilloscope(crashMult, true);
+
+      document.getElementById('crash-x').textContent = crashStop.toFixed(2) + 'x';
+      document.getElementById('crash-x').className = 'crash-x busted';
+      document.getElementById('crash-sub').textContent = 'ШУХЕР! ВЕРТУХАЙ В ГЛАЗКЕ!';
+      document.getElementById('btn-crash-go').disabled = false;
+      document.getElementById('btn-crash-take').disabled = true;
+      document.getElementById('btn-crash-take').textContent = 'ЗАБРАТЬ (0)';
+
+      const fl = document.getElementById('shuher-flash');
+      fl.classList.add('on');
+      setTimeout(() => fl.classList.remove('on'), 420);
+
+      pushCrashHist(crashStop, false);
+      saveToCloud();
+      return;
+    }
+
+    document.getElementById('crash-x').textContent = crashMult.toFixed(2) + 'x';
+    document.getElementById('btn-crash-take').textContent = `ЗАБРАТЬ (${fmt(Math.floor(crashBet * crashMult))})`;
+    drawOscilloscope(crashMult, false);
+    crashRaf = requestAnimationFrame(step);
+  };
+  crashRaf = requestAnimationFrame(step);
+});
+
+document.getElementById('btn-crash-take').addEventListener('click', () => {
+  if (!crashOn) return;
+  crashOn = false;
+  cancelAnimationFrame(crashRaf);
+
+  const win = Math.floor(crashBet * crashMult);
+  state.tea += win;
+  state.auth += Math.round(crashBet * 0.25);
+  audio.clink();
+
+  document.getElementById('crash-sub').textContent = `УСПЕЛ СКИНУТЬ! +${fmt(win)} ЧАЯ`;
+  document.getElementById('btn-crash-go').disabled = false;
+  document.getElementById('btn-crash-take').disabled = true;
+
+  pushCrashHist(crashMult, true);
+  refreshUI();
+  saveToCloud();
+  if (win >= 250) postSystemChat(`[КАТРАН] ${state.nick} успел спрыгнуть на ${crashMult.toFixed(2)}x (+${fmt(win)} чая).`);
+});
+
+/* ======================== FIREBASE MMO ======================== */
+
+let db = null, auth = null;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'prison-barrack-mmo';
+
+async function initCloud() {
+  const badge = document.getElementById('net-badge');
+  try {
+    if (typeof __firebase_config === 'undefined' || !__firebase_config) throw new Error('no config');
+    const cfg = JSON.parse(__firebase_config);
+    const app = initializeApp(cfg);
+    auth = getAuth(app);
+    db = getFirestore(app);
+
+    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+      await signInWithCustomToken(auth, __initial_auth_token);
+    } else {
+      await signInAnonymously(auth);
+    }
+
+    if (!auth.currentUser) throw new Error('auth failed');
+    state.uid = auth.currentUser.uid;
+    state.online = true;
+
+    document.getElementById('ui-uid').textContent = state.uid;
+    badge.textContent = 'СЕТЬ: В БАРАКЕ';
+    document.getElementById('save-status').textContent = 'Облако активно';
+
+    await loadFromCloud();
+    watchLeaderboard();
+    watchChat();
+    await saveToCloud();
+
+    setInterval(saveToCloud, 15000);
+  } catch (err) {
+    state.uid = 'off-' + Math.random().toString(36).slice(2, 9);
+    document.getElementById('ui-uid').textContent = state.uid;
+    badge.textContent = 'СЕТЬ: ОФЛАЙН';
+    document.getElementById('save-status').textContent = 'Без облака';
+    renderOfflineData();
+  }
+}
+
+async function loadFromCloud() {
+  if (!state.uid || !db) return;
+  try {
+    const ref = doc(db, 'artifacts', appId, 'users', state.uid, 'save', 'main');
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const d = snap.data();
+      if (typeof d.tea === 'number') state.tea = d.tea;
+      if (typeof d.auth === 'number') state.auth = d.auth;
+      if (typeof d.clicks === 'number') state.clicks = d.clicks;
+      if (typeof d.nick === 'string' && d.nick.trim()) state.nick = d.nick;
+      if (d.upgs && typeof d.upgs === 'object') {
+        for (const u of UPGRADES) state.upgs[u.id] = Number(d.upgs[u.id]) || 0;
+      }
+      refreshUI();
+    }
+    document.getElementById('inp-nick').value = state.nick;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function saveToCloud(manual = false) {
+  if (!state.uid || !db) {
+    if (manual) toast('Облако не подключено.', true);
+    return;
+  }
+  try {
+    const now = Date.now();
+    await setDoc(doc(db, 'artifacts', appId, 'users', state.uid, 'save', 'main'), {
+      tea: Math.floor(state.tea),
+      auth: Math.floor(state.auth),
+      clicks: state.clicks,
+      nick: state.nick,
+      upgs: state.upgs,
+      updatedAt: now
+    }, { merge: true });
+
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', state.uid), {
+      uid: state.uid,
+      nick: state.nick,
+      tea: Math.floor(state.tea),
+      auth: Math.floor(state.auth),
+      rank: getRank(state.auth).cur.name,
+      updatedAt: now
+    }, { merge: true });
+
+    if (manual) {
+      audio.clink();
+      toast('Дело подшито в архив.');
+    }
+  } catch (e) {
+    if (manual) toast('Ошибка записи.', true);
+  }
+}
+
+function watchLeaderboard() {
+  if (!state.uid || !db) return;
+  const col = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+  onSnapshot(col, (snap) => {
+    const arr = [];
+    const cutoff = Date.now() - 180000; // активные за 3 минуты
+    let activeCnt = 0;
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      if (d && d.nick) {
+        arr.push(d);
+        if ((d.updatedAt || 0) >= cutoff) activeCnt++;
+      }
+    });
+    state.players = arr;
+    document.getElementById('ui-online').textContent = Math.max(1, activeCnt);
+    renderLeaderboard();
+  }, (err) => console.error(err));
+}
+
+function renderLeaderboard() {
+  const tbody = document.getElementById('top-tbody');
+  const sorted = [...state.players].sort((a, b) => {
+    return state.sortBy === 'tea' ? (b.tea || 0) - (a.tea || 0) : (b.auth || 0) - (a.auth || 0);
+  }).slice(0, 25);
+
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#8a8173;">Пусто.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((p, i) => {
+    const me = p.uid === state.uid;
+    return `
+      <tr class="${me ? 'me' : ''}">
+        <td>${i + 1}</td>
+        <td>${esc(p.nick)} <span style="color:#8a8173; font-size:10px;">[${esc(p.rank || 'Первоход')}]</span></td>
+        <td>${fmt(p.auth || 0)}</td>
+        <td style="color:#b88b32;">${fmt(p.tea || 0)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function watchChat() {
+  if (!state.uid || !db) return;
+  const col = collection(db, 'artifacts', appId, 'public', 'data', 'chat');
+  onSnapshot(col, (snap) => {
+    const msgs = [];
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      if (d && d.text) msgs.push(d);
+    });
+    msgs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    renderChat(msgs.slice(-45));
+  }, (err) => console.error(err));
+}
+
+function renderChat(list) {
+  const box = document.getElementById('chat-box');
+  if (!list.length) {
+    box.innerHTML = '<div class="chat-sys">Тишина в бараке. Напиши первым.</div>';
+    return;
+  }
+  box.innerHTML = list.map(m => {
+    const t = m.ts ? new Date(m.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+    if (m.sys) {
+      return `<div class="chat-sys"><span class="chat-time">[${t}]</span>${esc(m.text)}</div>`;
+    }
+    return `
+      <div class="chat-line">
+        <span class="chat-time">[${t}]</span>
+        <span class="chat-nick">${esc(m.nick || 'Неизвестный')}</span>
+        <span class="chat-rank">(${esc(m.rank || 'Первоход')})</span>:
+        <span>${esc(m.text)}</span>
+      </div>
+    `;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChat(text, sys = false) {
+  const clean = text.trim();
+  if (!clean) return;
+  if (!state.uid || !db) {
+    if (!sys) toast('Чат работает только в сети.', true);
+    return;
+  }
+  try {
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'chat'), {
+      uid: state.uid,
+      nick: state.nick,
+      rank: getRank(state.auth).cur.name,
+      text: clean.slice(0, 140),
+      sys,
+      ts: Date.now()
+    });
+  } catch (e) { console.error(e); }
+}
+
+function postSystemChat(line) {
+  sendChat(line, true);
+}
+
+function renderOfflineData() {
+  state.players = [
+    { uid: state.uid, nick: state.nick, tea: state.tea, auth: state.auth, rank: getRank(state.auth).cur.name },
+    { uid: 'npc1', nick: 'Серый_Кот', tea: 4200, auth: 1450, rank: 'Бывалый' },
+    { uid: 'npc2', nick: 'Толян', tea: 980, auth: 310, rank: 'Бродяга' }
+  ];
+  renderLeaderboard();
+  renderChat([{ sys: true, text: 'Автономный режим. Подключите облако для живого чата.', ts: Date.now() }]);
+}
+
+/* ======================== ОБРАБОТЧИКИ UI ======================== */
+
+// Вкладки правой панели
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-body').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 't-katran') drawOscilloscope(crashMult, false);
+    if (btn.dataset.tab === 't-top' && !state.online) renderOfflineData();
+  });
+});
+
+// Подвкладки Катрана
+document.querySelectorAll('.sub-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.game-box').forEach(g => g.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.game).classList.add('active');
+    if (btn.dataset.game === 'g-crash') drawOscilloscope(crashMult, false);
+  });
+});
+
+// Ручная кнопка тапа
+document.getElementById('btn-tap-tea').addEventListener('click', (e) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  doMainClick(r.left + r.width / 2, r.top - 6, false);
+});
+
+// Тумблер звука
+document.getElementById('btn-sound').addEventListener('click', (e) => {
+  state.soundOn = !state.soundOn;
+  e.currentTarget.textContent = state.soundOn ? '[ЗВУК: ВКЛ]' : '[ЗВУК: ВЫКЛ]';
+});
+
+// Погоняло и ручное сохранение
+document.getElementById('btn-nick').addEventListener('click', () => {
+  const v = document.getElementById('inp-nick').value.trim();
+  if (v.length < 2) { toast('Слишком короткое погоняло.', true); return; }
+  state.nick = v.slice(0, 16);
+  refreshUI();
+  saveToCloud();
+  toast('Погоняло обновлено.');
+});
+
+document.getElementById('btn-save').addEventListener('click', () => saveToCloud(true));
+
+// Сортировка рейтинга
+document.getElementById('sort-auth').addEventListener('click', () => {
+  state.sortBy = 'auth';
+  document.getElementById('sort-auth').classList.add('btn-brass');
+  document.getElementById('sort-tea').classList.remove('btn-brass');
+  renderLeaderboard();
+});
+document.getElementById('sort-tea').addEventListener('click', () => {
+  state.sortBy = 'tea';
+  document.getElementById('sort-tea').classList.add('btn-brass');
+  document.getElementById('sort-auth').classList.remove('btn-brass');
+  renderLeaderboard();
+});
+
+// Отправка в чат
+document.getElementById('chat-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const inp = document.getElementById('chat-inp');
+  const txt = inp.value.trim();
+  if (!txt) return;
+  inp.value = '';
+  sendChat(txt, false);
+});
+
+/* ======================== СТАРТ ======================== */
+
+window.onload = () => {
+  buildUpgrades();
+  refreshUI();
+  init3D();
+  requestAnimationFrame(loop3D);
+  drawOscilloscope(1.0, false);
+  initCloud();
+};
+</script>
+</body>
+</html>
